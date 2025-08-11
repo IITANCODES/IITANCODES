@@ -1,0 +1,1241 @@
+<!--
+README (top-level instructions)
+File: index.html (single-file website)
+How to use:
+ - Save this entire content into a file named `index.html` and open in a modern browser.
+ - No build steps or external libs required. All HTML, CSS and JS are embedded.
+
+Customization:
+ - Menu data: In the script at the bottom, the `MENU_DATA` array contains objects for categories and items.
+   Edit or add items there (id, name, description, price, tags, image). The UI renders dynamically from this.
+ - Theme colors & spacing: CSS variables under `:root` at the top of the <style> section control palette, spacing & type scale.
+   Tweak variables like --color-forest, --color-sand, --bg, etc. for theming.
+
+Notes / Accessibility:
+ - Mobile-first, responsive layout. Uses prefers-reduced-motion.
+ - Cart stored in localStorage under key 'ffr_cart_v1'.
+ - Keyboard navigation supported for nav, lightbox, and cart drawer (basic focus trapping implemented).
+ - Images use <picture> with responsive URLs from Unsplash / Picsum. They are lazy-loaded and aspect ratio reserved to avoid CLS.
+
+Developer comment:
+ - Key features implemented: IntersectionObserver animations, dynamic menu rendering, cart logic with localStorage, accessible off-canvas mobile nav, lightbox gallery, testimonials rotation, form validation & simulated async submit, toasts.
+ - Keep console open during development — code is intentionally written to avoid errors.
+
+Enjoy building with Fresh Food Restaurant — "Wholesome. Seasonal. Fresh."
+-->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Fresh Food Restaurant — Wholesome. Seasonal. Fresh.</title>
+  <meta name="description" content="Fresh Food Restaurant — Wholesome. Seasonal. Fresh. Farm-to-table dining with seasonal menus, cozy ambience, and mindful ingredients." />
+
+  <!-- CSS: Variables, reset, layout, components -->
+  <style>
+    /* ========== BASIC RESET & BOX-SIZING ========== */
+    *,*::before,*::after{box-sizing:border-box}
+    html{font-family: system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial; -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; font-size:16px; scroll-behavior:smooth}
+    body{margin:0; background:var(--bg); color:var(--text); line-height:1.45; -webkit-text-size-adjust:100%}
+    img,video,picture{max-width:100%; display:block}
+
+    /* ========== THEME VARIABLES (edit here) ========== */
+    :root{
+      /* Colors */
+      --color-forest: #3b7a57;       /* soft green */
+      --color-leaf:   #66a57f;
+      --color-sand:   #f5eee6;       /* warm neutral */
+      --color-cream:  #fbf9f6;       /* off-white */
+      --color-ink:    #21323a;       /* deep ink for text */
+      --color-muted:  #546b6a;
+      --accent:       var(--color-forest);
+      --danger:       #c44;
+      --glass:        rgba(255,255,255,0.6);
+
+      /* Typography scale */
+      --fs-hero: clamp(1.75rem, 4vw + 0.5rem, 3.25rem);
+      --fs-h1: clamp(1.25rem, 2.2vw, 1.75rem);
+      --fs-body: 1rem;
+      --fw-heading: 600;
+      --fw-body: 400;
+
+      /* Spacing */
+      --space-xxs: 0.25rem;
+      --space-xs: 0.5rem;
+      --space-sm: 0.75rem;
+      --space-md: 1.25rem;
+      --space-lg: 2rem;
+      --space-xl: 3rem;
+      --radius: 12px;
+
+      /* Layout */
+      --max-width: 1100px;
+      --container-padding: 1rem;
+
+      /* Elevation */
+      --shadow-sm: 0 6px 18px rgba(35,45,40,0.06);
+      --shadow-md: 0 12px 30px rgba(35,45,40,0.08);
+
+      /* Accessibility */
+      --focus: 3px solid rgba(102,165,127,0.25);
+    }
+
+    /* Respect reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      :root { --reduced: 1; }
+    }
+
+    /* ========== LAYOUT / CONTAINER ========== */
+    .container {
+      width:100%;
+      max-width:var(--max-width);
+      margin:0 auto;
+      padding:0 var(--container-padding);
+    }
+
+    /* ========== HEADER & NAV ========== */
+    header {
+      position:sticky;
+      top:0;
+      z-index:60;
+      backdrop-filter: blur(6px);
+      background: linear-gradient(180deg, rgba(255,255,255,0.6), rgba(255,255,255,0.45));
+      border-bottom:1px solid rgba(40,60,50,0.06);
+    }
+    .nav-inner {
+      display:flex;
+      gap:var(--space-md);
+      align-items:center;
+      justify-content:space-between;
+      padding:0.6rem var(--container-padding);
+      max-width:var(--max-width);
+      margin:0 auto;
+    }
+    .brand {
+      display:flex; align-items:center; gap:0.75rem;
+    }
+    .wordmark {
+      font-weight:700;
+      font-size:1rem;
+      letter-spacing:0.2px;
+      color:var(--color-ink);
+    }
+    .tagline { font-size:0.8rem; color:var(--color-muted); line-height:1 }
+
+    nav.primary {
+      display:flex;
+      gap:0.6rem;
+      align-items:center;
+    }
+    .nav-link {
+      background:none;
+      border:0;
+      padding:0.5rem 0.6rem;
+      border-radius:8px;
+      color:var(--color-ink);
+      font-weight:500;
+    }
+    .nav-link[aria-current="true"]{ background:linear-gradient(90deg,rgba(102,165,127,0.08),transparent); box-shadow:var(--shadow-sm) }
+    .nav-toggle { display:none } /* mobile only toggle */
+
+    /* CTA buttons */
+    .btn {
+      display:inline-flex; align-items:center; gap:0.5rem;
+      padding:0.55rem 0.85rem;
+      border-radius:10px;
+      border:0;
+      cursor:pointer;
+      font-weight:600;
+      font-size:0.95rem;
+      background:var(--accent);
+      color:white;
+      box-shadow: 0 6px 18px rgba(59,122,87,0.14);
+    }
+    .btn.ghost {
+      background:transparent;
+      color:var(--color-forest);
+      border:1px solid rgba(59,122,87,0.12);
+    }
+
+    /* Mobile: off-canvas nav */
+    .mobile-nav-button {
+      display:inline-flex;
+      align-items:center;
+      gap:0.5rem;
+      background:none; border:0; padding:0.5rem; border-radius:10px;
+    }
+    @media (max-width:900px){
+      nav.primary{ display:none }
+      .nav-toggle{ display:block }
+    }
+
+    /* ========== HERO ========== */
+    .hero {
+      min-height: clamp(60vh, 72vh, 80vh);
+      display:grid;
+      align-items:center;
+      padding: clamp(1.25rem, 3vw, 3rem) 0;
+      position:relative;
+      overflow:visible;
+      background:
+        radial-gradient(1200px 600px at 10% 20%, rgba(102,165,127,0.06), transparent 8%),
+        linear-gradient(180deg, var(--color-cream), rgba(250,250,248,0.95));
+    }
+    .hero-grid {
+      display:grid;
+      grid-template-columns: 1fr 420px;
+      gap: clamp(1.25rem, 3vw, 2.5rem);
+      align-items:center;
+      width:100%;
+      max-width:var(--max-width);
+      margin:0 auto;
+      padding:0 var(--container-padding);
+    }
+    .hero-content { padding: clamp(0.5rem,2vw,1rem) }
+    .kicker { color:var(--color-leaf); font-weight:700; font-size:0.9rem; letter-spacing:0.6px }
+    h1 { font-size:var(--fs-hero); margin:0.4rem 0; line-height:1.02; color:var(--color-ink); font-family: Georgia, "Times New Roman", serif; font-weight:700; }
+    p.lead { font-size:1.05rem; color:var(--color-muted); margin-bottom:1rem }
+
+    .hero-cta { display:flex; gap:0.75rem; flex-wrap:wrap; margin-top:0.75rem }
+    .hero-visual {
+      border-radius:18px;
+      overflow:hidden;
+      box-shadow:var(--shadow-md);
+      min-width:220px;
+      aspect-ratio: 4 / 5;
+      background:linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0.35));
+      display:flex; align-items:center; justify-content:center;
+    }
+    .wordmark-large { display:flex; flex-direction:column; gap:0.15rem; align-items:flex-start }
+    .logo-circle {
+      width:64px;height:64px;border-radius:14px;
+      display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(180deg, var(--color-forest), var(--color-leaf));
+      color:white; font-weight:700; font-size:1.1rem;
+      box-shadow: 0 8px 30px rgba(60,105,80,0.12);
+    }
+    /* subtle entrance animations */
+    .reveal {
+      opacity:0;
+      transform: translateY(8px) scale(0.995);
+      transition: transform 420ms cubic-bezier(.2,.9,.32,1), opacity 420ms ease;
+    }
+    .reveal.visible { opacity:1; transform:none; }
+
+    @media (prefers-reduced-motion: reduce){
+      .reveal { transition:none; transform:none; }
+    }
+
+    /* ========== ABOUT & HIGHLIGHTS ========== */
+    section { padding: calc(var(--space-lg)) 0; }
+    .about-grid { display:grid; grid-template-columns: 1fr 360px; gap: clamp(1rem,2.5vw,2rem); align-items:center; }
+    .cards { display:flex; flex-direction:column; gap:0.75rem }
+    .feature-card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(250,250,248,0.95));
+      border-radius:12px;padding:0.9rem; box-shadow:var(--shadow-sm);
+      display:flex; gap:0.75rem; align-items:center;
+    }
+    .icon {
+      width:44px;height:44px;border-radius:10px;display:grid;place-items:center;background:linear-gradient(180deg,var(--color-sand),#fff);
+      box-shadow:inset 0 -6px 16px rgba(0,0,0,0.03);
+    }
+
+    /* ========== GALLERY ========== */
+    .gallery-grid {
+      display:grid;
+      grid-template-columns: repeat(3,1fr);
+      gap:0.6rem;
+    }
+    .gallery-item {
+      position:relative; overflow:hidden; border-radius:12px;
+      min-height:140px;
+      cursor:pointer;
+    }
+    .gallery-item img { width:100%; height:100%; object-fit:cover; display:block; transition:transform 320ms ease; transform-origin:center; }
+    .gallery-item:focus-within, .gallery-item:hover img { transform: scale(1.06); }
+    .gallery-item .caption { position:absolute; left:8px; bottom:8px; color:white; text-shadow:0 2px 10px rgba(0,0,0,0.45); font-weight:600; font-size:0.95rem; }
+
+    /* Lightbox modal */
+    .lightbox {
+      position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:120;
+      background: linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0.75));
+      padding:2rem;
+    }
+    .lightbox[aria-hidden="false"] { display:flex; }
+    .lightbox-content { max-width:1100px; width:100%; border-radius:12px; overflow:hidden; box-shadow: 0 30px 80px rgba(0,0,0,0.5); }
+    .lightbox img { width:100%; height:auto; display:block; }
+
+    /* ========== MENU LIST & CARDS ========== */
+    .menu-section { background:linear-gradient(180deg, rgba(245,244,241,0.8), transparent); padding-bottom:3rem; }
+    .menu-grid { display:grid; gap:1rem; grid-template-columns: repeat(2, minmax(0,1fr)); }
+    .menu-cat { margin-bottom:1rem }
+    .menu-item {
+      display:flex; gap:0.75rem; align-items:center; background: white; padding:0.7rem; border-radius:12px; box-shadow:var(--shadow-sm);
+    }
+    .thumb { width:84px;height:84px;border-radius:10px;flex:0 0 84px; overflow:hidden; }
+    .menu-item .meta { flex:1; display:flex; flex-direction:column; gap:0.35rem; }
+    .menu-item .row { display:flex; justify-content:space-between; align-items:center; gap:1rem; }
+    .tags { display:flex; gap:0.4rem; flex-wrap:wrap; }
+    .tag { font-size:0.78rem; padding:0.18rem 0.35rem; border-radius:6px; background:rgba(102,165,127,0.08); color:var(--color-forest); font-weight:600; }
+    .add-cart { display:flex; gap:0.5rem; align-items:center; }
+    .qty-controls { display:flex; gap:0.25rem; align-items:center; background:rgba(0,0,0,0.03); padding:0.15rem; border-radius:8px; }
+    .qty-controls button { background:none; border:0; padding:0.28rem 0.5rem; font-weight:700; font-size:1rem; cursor:pointer }
+    .price { font-weight:700; color:var(--color-ink); }
+
+    @media (max-width:700px){
+      .menu-grid { grid-template-columns: 1fr; }
+      .hero-grid { grid-template-columns: 1fr; }
+      .about-grid { grid-template-columns: 1fr; }
+      .gallery-grid { grid-template-columns: repeat(2,1fr) }
+      .hero-visual { order: -1; margin-bottom:0.6rem }
+    }
+
+    /* ========== MINI-CART DRAWER ========== */
+    .cart-drawer {
+      position:fixed; right:0; top:0; height:100svh; width: min(420px, 92vw);
+      transform: translateX(110%); transition: transform 380ms cubic-bezier(.2,.9,.32,1);
+      z-index:130; background:linear-gradient(180deg, #fff, var(--color-cream)); box-shadow: -30px 0 60px rgba(20,30,25,0.12);
+      padding:1rem; display:flex; flex-direction:column; gap:0.6rem;
+    }
+    .cart-drawer[aria-hidden="false"] { transform:translateX(0); }
+    .cart-items { flex:1; overflow:auto; display:flex; flex-direction:column; gap:0.6rem; padding-right:4px; }
+    .cart-empty { color:var(--color-muted); text-align:center; padding:2rem 0; }
+    .cart-footer { border-top:1px dashed rgba(0,0,0,0.06); padding-top:0.6rem; }
+
+    /* ========== TESTIMONIALS ========== */
+    .testimonial { min-height:110px; display:flex; align-items:center; gap:1rem; padding:1rem; border-radius:12px; background:linear-gradient(180deg,#fff,#fbfbfb); box-shadow:var(--shadow-sm) }
+    .quote { font-style:italic; color:var(--color-ink); font-weight:600 }
+    .testimonial-meta { font-size:0.9rem; color:var(--color-muted) }
+
+    /* ========== LOCATION & HOURS ========== */
+    .map-placeholder { aspect-ratio: 16/9; border-radius:12px; overflow:hidden; background:linear-gradient(180deg, rgba(59,122,87,0.06), rgba(250,250,250,0.3)); display:grid;place-items:center; color:var(--color-muted) }
+    table.hours { width:100%; border-collapse:collapse; }
+    table.hours td, table.hours th{ padding:0.4rem 0.6rem; text-align:left; vertical-align:top; font-size:0.95rem }
+    table.hours tr:not(:last-child) td{ border-bottom:1px dashed rgba(0,0,0,0.04) }
+
+    /* ========== FORM ========== */
+    form { display:grid; gap:0.6rem; max-width:760px; }
+    label { font-size:0.9rem; color:var(--color-ink); font-weight:600; display:block; margin-bottom:0.25rem }
+    input[type="text"], input[type="email"], input[type="date"], textarea, select {
+      padding:0.65rem 0.75rem; border-radius:10px; border:1px solid rgba(0,0,0,0.06); background:white; font-size:1rem;
+    }
+    textarea { min-height:120px; resize:vertical }
+    .star-rating { display:flex; gap:0.25rem; }
+    .error { color:var(--danger); font-size:0.9rem; }
+    .sr-only{ position:absolute; left:-10000px; top:auto; width:1px; height:1px; overflow:hidden }
+
+    /* ========== TOAST / SNACKBAR ========== */
+    .toast {
+      position:fixed; left:50%; transform:translateX(-50%); bottom:18px; z-index:140;
+      background:var(--color-forest); color:white; padding:0.6rem 1rem; border-radius:10px; box-shadow:var(--shadow-md); display:none;
+    }
+    .toast.show { display:block; animation: toast-in 420ms ease; }
+    @keyframes toast-in { from { transform:translate(-50%, 12px); opacity:0 } to { transform:translate(-50%,0); opacity:1 } }
+
+    /* ========== FOOTER ========== */
+    footer { padding:2rem 0; background: linear-gradient(180deg,#fbfbfb,#f8f6f2); border-top:1px solid rgba(0,0,0,0.03) }
+    .socials { display:flex; gap:0.5rem; align-items:center; }
+
+    /* Focus visible & large tap targets */
+    :focus { outline: none }
+    :focus-visible { box-shadow:var(--focus); border-radius:10px; }
+    button, .btn, a { touch-action:manipulation; min-height:44px; min-width:44px }
+
+  </style>
+</head>
+<body>
+
+  <!-- ===== HEADER / NAV ===== -->
+  <header role="banner" aria-label="Fresh Food Restaurant header">
+    <div class="nav-inner">
+      <div class="brand" aria-hidden="false">
+        <div class="logo-circle" aria-hidden="true">FF</div>
+        <div>
+          <div class="wordmark">Fresh Food Restaurant</div>
+          <div class="tagline">Wholesome. Seasonal. Fresh.</div>
+        </div>
+      </div>
+
+      <nav class="primary" role="navigation" aria-label="Primary">
+        <button class="nav-link" data-target="#hero">Home</button>
+        <button class="nav-link" data-target="#about">About</button>
+        <button class="nav-link" data-target="#gallery">Gallery</button>
+        <button class="nav-link" data-target="#menu">Menu</button>
+        <button class="nav-link" data-target="#testimonials">Testimonials</button>
+        <button class="nav-link" data-target="#location">Location</button>
+        <button class="nav-link" data-target="#feedback">Feedback</button>
+      </nav>
+
+      <div style="display:flex;gap:0.5rem;align-items:center">
+        <button class="btn ghost" id="view-menu-cta">View Menu</button>
+        <button class="btn" id="order-now">Order Now</button>
+
+        <!-- Mobile nav toggle -->
+        <button class="mobile-nav-button nav-toggle" id="mobileNavToggle" aria-expanded="false" aria-controls="mobileNav" aria-label="Open menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Off-canvas mobile nav -->
+    <div id="mobileNav" role="dialog" aria-modal="true" aria-hidden="true" style="position:fixed;inset:0;display:none;z-index:200">
+      <div style="position:absolute;inset:0;background:rgba(0,0,0,0.35)"></div>
+      <aside style="position:fixed;right:0;top:0;height:100%;width:86vw;max-width:320px;background:linear-gradient(180deg,#fff,#fbfbfb);padding:1rem;border-left:1px solid rgba(0,0,0,0.04);box-shadow:-20px 0 60px rgba(0,0,0,0.12);">
+        <button id="closeMobileNav" style="background:none;border:0;padding:0.4rem;margin-bottom:0.4rem" aria-label="Close menu">Close ✕</button>
+        <nav style="display:flex;flex-direction:column;gap:0.5rem" aria-label="Mobile">
+          <button class="nav-link" data-target="#hero">Home</button>
+          <button class="nav-link" data-target="#about">About</button>
+          <button class="nav-link" data-target="#gallery">Gallery</button>
+          <button class="nav-link" data-target="#menu">Menu</button>
+          <button class="nav-link" data-target="#testimonials">Testimonials</button>
+          <button class="nav-link" data-target="#location">Location</button>
+          <button class="nav-link" data-target="#feedback">Feedback</button>
+        </nav>
+      </aside>
+    </div>
+  </header>
+
+  <main id="main" role="main">
+
+    <!-- ===== HERO ===== -->
+    <section id="hero" class="hero" aria-label="Hero section">
+      <div class="hero-grid container">
+        <div class="hero-content reveal" data-reveal>
+          <div class="kicker">Farm-to-table · Daily seasonal menu</div>
+          <h1>Fresh Food Restaurant</h1>
+          <p class="lead">Wholesome meals crafted with seasonal produce. We partner with nearby farms to bring you cuisine that changes with the harvest — gentle on the palate and the planet.</p>
+          <div class="hero-cta">
+            <button class="btn" id="cta-view-menu">View Menu</button>
+            <button class="btn ghost" id="cta-order">Order Now</button>
+            <a class="nav-link" href="#location">Visit Us</a>
+          </div>
+
+          <div style="margin-top:1rem;color:var(--color-muted);font-size:0.95rem">
+            <strong>Hours:</strong> Tue–Sun 10:00–22:00 · Closed Mondays
+          </div>
+        </div>
+
+        <div class="hero-visual reveal" data-reveal aria-hidden="false">
+          <div style="position:relative;width:100%;height:100%">
+            <!-- Responsive picture with reserved aspect ratio -->
+            <picture>
+              <source media="(min-width:1000px)" srcset="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=900&q=70&auto=format&fit=crop">
+              <source media="(min-width:600px)" srcset="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=70&auto=format&fit=crop">
+              <img src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=420&q=70&auto=format&fit=crop" alt="A beautifully plated seasonal salad with fresh greens and edible flowers" style="width:100%;height:100%;object-fit:cover;">
+            </picture>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== ABOUT ===== -->
+    <section id="about" aria-labelledby="aboutTitle" class="container reveal" data-reveal>
+      <h2 id="aboutTitle" style="font-size:var(--fs-h1);margin-bottom:0.5rem">About</h2>
+      <div class="about-grid">
+        <div>
+          <p>At Fresh Food we believe food should be honest — sourced locally when possible, prepared simply, and served with warmth. Each season brings new flavors, and our menu evolves to highlight the best available ingredients.</p>
+          <p>Our kitchen works with small-scale farms and artisans to ensure transparency, freshness, and minimal waste. We prioritize plant-forward dishes and provide clear dietary tags for each menu item.</p>
+
+          <div class="cards" style="margin-top:1rem">
+            <div class="feature-card">
+              <div class="icon" aria-hidden="true">🥕</div>
+              <div>
+                <div style="font-weight:700">Fresh Ingredients</div>
+                <div style="color:var(--color-muted)">Sourced daily from nearby farms and markets.</div>
+              </div>
+            </div>
+
+            <div class="feature-card">
+              <div class="icon" aria-hidden="true">🌿</div>
+              <div>
+                <div style="font-weight:700">Seasonal Menu</div>
+                <div style="color:var(--color-muted)">We change our menu to celebrate each harvest.</div>
+              </div>
+            </div>
+
+            <div class="feature-card">
+              <div class="icon" aria-hidden="true">🕯️</div>
+              <div>
+                <div style="font-weight:700">Cozy Ambience</div>
+                <div style="color:var(--color-muted)">A warm space for family dinners and quiet lunches.</div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <aside>
+          <div style="border-radius:12px; padding:0.6rem; background:linear-gradient(180deg,#fff,#fbfbfb); box-shadow:var(--shadow-sm)">
+            <h3 style="margin-top:0">Farm-to-table Promise</h3>
+            <p style="margin-bottom:0.6rem;color:var(--color-muted)">We visit our partners regularly — transparency matters. If you have a dietary need, our team will happily guide you through options.</p>
+            <div style="display:flex;gap:0.5rem;margin-top:0.6rem">
+              <button class="btn ghost" aria-label="Learn more about sourcing">Learn More</button>
+              <button class="btn" id="ctaBook">Book a Table</button>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ===== GALLERY ===== -->
+    <section id="gallery" aria-labelledby="galleryTitle" class="container">
+      <h2 id="galleryTitle" style="font-size:var(--fs-h1);margin-bottom:0.75rem">Featured Images</h2>
+      <p style="color:var(--color-muted);margin-top:0">Tasteful selections from our kitchen and dining space. Click to enlarge.</p>
+
+      <div class="gallery-grid reveal" data-reveal>
+        <!-- Gallery items -->
+        <div class="gallery-item" tabindex="0" role="button" data-src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1600&q=60&auto=format&fit=crop" aria-label="Wood-fired vegetables on a serving board">
+          <img loading="lazy" alt="Wood-fired vegetables arranged on a serving board" src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&q=60&auto=format&fit=crop" width="640" height="480">
+          <div class="caption">Wood-fired veg</div>
+        </div>
+
+        <div class="gallery-item" tabindex="0" role="button" data-src="https://images.unsplash.com/photo-1543353071-087092ec3939?w=1600&q=60&auto=format&fit=crop" aria-label="Handmade pasta with herbs">
+          <img loading="lazy" alt="Handmade pasta with herbs" src="https://images.unsplash.com/photo-1543353071-087092ec3939?w=600&q=60&auto=format&fit=crop" width="640" height="480">
+          <div class="caption">Handmade pasta</div>
+        </div>
+
+        <div class="gallery-item" tabindex="0" role="button" data-src="https://images.unsplash.com/photo-1546554137-f86b9593a222?w=1600&q=60&auto=format&fit=crop" aria-label="Dessert plated with berries">
+          <img loading="lazy" alt="Dessert plated with berries" src="https://images.unsplash.com/photo-1546554137-f86b9593a222?w=600&q=60&auto=format&fit=crop" width="640" height="480">
+          <div class="caption">Seasonal dessert</div>
+        </div>
+
+        <div class="gallery-item" tabindex="0" role="button" data-src="https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?w=1600&q=60&auto=format&fit=crop" aria-label="Chef preparing meal in kitchen">
+          <img loading="lazy" alt="Chef preparing meal in kitchen" src="https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?w=600&q=60&auto=format&fit=crop" width="640" height="480">
+          <div class="caption">Open kitchen</div>
+        </div>
+
+        <div class="gallery-item" tabindex="0" role="button" data-src="https://images.unsplash.com/photo-1516684669134-de6f71b4f1d0?w=1600&q=60&auto=format&fit=crop" aria-label="Interior of cozy restaurant">
+          <img loading="lazy" alt="Interior of cozy restaurant" src="https://images.unsplash.com/photo-1516684669134-de6f71b4f1d0?w=600&q=60&auto=format&fit=crop" width="640" height="480">
+          <div class="caption">Cozy interior</div>
+        </div>
+
+        <div class="gallery-item" tabindex="0" role="button" data-src="https://images.unsplash.com/photo-1551218808-94e220e084d2?w=1600&q=60&auto=format&fit=crop" aria-label="Fresh salad bowl">
+          <img loading="lazy" alt="Fresh salad bowl" src="https://images.unsplash.com/photo-1551218808-94e220e084d2?w=600&q=60&auto=format&fit=crop" width="640" height="480">
+          <div class="caption">Fresh salads</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LIGHTBOX -->
+    <div class="lightbox" id="lightbox" aria-hidden="true" role="dialog" aria-label="Image preview">
+      <div class="lightbox-content" role="document">
+        <button id="lightboxClose" style="position:absolute;right:14px;top:14px;z-index:30;background:rgba(255,255,255,0.9);border-radius:8px;padding:0.4rem;border:0">Close ✕</button>
+        <img id="lightboxImage" alt="">
+      </div>
+    </div>
+
+    <!-- ===== MENU ===== -->
+    <section id="menu" aria-labelledby="menuTitle" class="menu-section container reveal" data-reveal>
+      <h2 id="menuTitle" style="font-size:var(--fs-h1);margin-bottom:0.5rem">Prototype Menu</h2>
+      <p style="color:var(--color-muted);margin-top:0">Orderable mock — add items to the cart and see the mini-cart drawer persist across reloads.</p>
+
+      <div style="display:flex;gap:1rem;align-items:center;margin-top:1rem;margin-bottom:1rem">
+        <input id="search" type="search" placeholder="Search dishes or tags" aria-label="Search menu" style="padding:0.5rem;border-radius:8px;border:1px solid rgba(0,0,0,0.06);flex:1">
+        <button class="btn" id="openCartBtn" aria-controls="cartDrawer" aria-expanded="false">Cart (<span id="cartCount">0</span>)</button>
+      </div>
+
+      <div id="menuContainer">
+        <!-- dynamic rendering here -->
+      </div>
+    </section>
+
+    <!-- CART DRAWER -->
+    <aside id="cartDrawer" class="cart-drawer" role="dialog" aria-hidden="true" aria-label="Cart">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <h3 style="margin:0">Your Order</h3>
+        <button id="closeCart" aria-label="Close cart" style="background:none;border:0;padding:0.3rem">Close</button>
+      </div>
+      <div class="cart-items" id="cartItems" tabindex="0" aria-live="polite"></div>
+      <div class="cart-footer">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div style="font-weight:700">Subtotal</div>
+          <div id="cartSubtotal">₹0.00</div>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-top:0.25rem">
+          <div style="color:var(--color-muted)">Tax (placeholder)</div>
+          <div style="color:var(--color-muted)">₹0.00</div>
+        </div>
+        <div style="margin-top:0.6rem;display:flex;gap:0.5rem">
+          <button class="btn" id="proceedCheckout">Proceed to Checkout</button>
+          <button class="btn ghost" id="clearCart">Clear</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ===== TESTIMONIALS ===== -->
+    <section id="testimonials" aria-labelledby="testimonialsTitle" class="container reveal" data-reveal>
+      <h2 id="testimonialsTitle" style="font-size:var(--fs-h1);margin-bottom:0.5rem">Testimonials</h2>
+      <div id="testimonialWrap" style="position:relative;max-width:760px">
+        <div id="testimonialInner" style="display:flex;gap:0.6rem;align-items:center">
+          <!-- Items inserted by JS; simple rotation -->
+        </div>
+        <div style="margin-top:0.6rem;display:flex;gap:0.5rem">
+          <button id="prevTest" class="nav-link" aria-label="Previous testimonial">◀</button>
+          <button id="nextTest" class="nav-link" aria-label="Next testimonial">▶</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== LOCATION & HOURS ===== -->
+    <section id="location" aria-labelledby="locationTitle" class="container reveal" data-reveal>
+      <h2 id="locationTitle" style="font-size:var(--fs-h1);margin-bottom:0.5rem">Location & Hours</h2>
+      <div style="display:grid;grid-template-columns:1fr 360px;gap:1rem;align-items:start">
+        <div>
+          <div class="map-placeholder" role="img" aria-label="Map placeholder for Fresh Food Restaurant">
+            <img loading="lazy" alt="Map placeholder" src="https://picsum.photos/seed/map/1200/700" style="width:100%;height:100%;object-fit:cover;opacity:0.95">
+          </div>
+
+          <div style="margin-top:1rem">
+            <p style="margin:0"><strong>Address</strong></p>
+            <p style="margin:0.3rem 0;color:var(--color-muted)">123 Harvest Lane, Greenfield, State — 560001</p>
+            <p style="margin-top:0.6rem"><strong>Contact</strong></p>
+            <p style="margin:0.3rem 0;color:var(--color-muted)">Phone: <a href="tel:+911234567890">+91 12345 67890</a></p>
+            <a class="btn" href="tel:+911234567890">Call Now</a>
+          </div>
+        </div>
+
+        <aside>
+          <h3 style="margin-top:0">Opening Hours</h3>
+          <table class="hours" aria-describedby="hoursDesc">
+            <tbody>
+              <tr><td>Tuesday</td><td>10:00 – 22:00</td></tr>
+              <tr><td>Wednesday</td><td>10:00 – 22:00</td></tr>
+              <tr><td>Thursday</td><td>10:00 – 22:00</td></tr>
+              <tr><td>Friday</td><td>10:00 – 23:00</td></tr>
+              <tr><td>Saturday</td><td>09:00 – 23:00</td></tr>
+              <tr><td>Sunday</td><td>09:00 – 21:00</td></tr>
+              <tr><td>Monday</td><td>Closed</td></tr>
+            </tbody>
+          </table>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ===== FEEDBACK ===== -->
+    <section id="feedback" aria-labelledby="feedbackTitle" class="container reveal" data-reveal>
+      <h2 id="feedbackTitle" style="font-size:var(--fs-h1);margin-bottom:0.5rem">Feedback</h2>
+      <p style="color:var(--color-muted);margin-top:0">We would love to hear from you — your feedback helps us improve. All fields are accessible and validated on the client.</p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem">
+        <form id="feedbackForm" aria-describedby="feedbackHelp" novalidate>
+          <div>
+            <label for="name">Name</label>
+            <input id="name" name="name" type="text" required aria-required="true" placeholder="Your name">
+            <div class="error" id="err-name" aria-live="polite"></div>
+          </div>
+
+          <div>
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" required placeholder="you@example.com">
+            <div class="error" id="err-email" aria-live="polite"></div>
+          </div>
+
+          <div>
+            <label for="visitDate">Visit Date</label>
+            <input id="visitDate" name="visitDate" type="date" required>
+            <div class="error" id="err-visitDate" aria-live="polite"></div>
+          </div>
+
+          <div>
+            <label for="rating">Rating</label>
+            <div class="star-rating" role="radiogroup" aria-labelledby="ratingLabel">
+              <span id="ratingLabel" class="sr-only">Rating (1-5)</span>
+              <label><input type="radio" name="rating" value="1">1</label>
+              <label><input type="radio" name="rating" value="2">2</label>
+              <label><input type="radio" name="rating" value="3" checked>3</label>
+              <label><input type="radio" name="rating" value="4">4</label>
+              <label><input type="radio" name="rating" value="5">5</label>
+            </div>
+            <div class="error" id="err-rating" aria-live="polite"></div>
+          </div>
+
+          <div style="grid-column:1 / -1">
+            <label for="comments">Comments</label>
+            <textarea id="comments" name="comments" placeholder="Tell us about your experience..."></textarea>
+            <div class="error" id="err-comments" aria-live="polite"></div>
+            <div id="feedbackHelp" style="color:var(--color-muted);font-size:0.9rem;margin-top:0.35rem">We appreciate honest feedback. We'll never share your info.</div>
+          </div>
+
+          <div style="display:flex;gap:0.5rem;margin-top:0.6rem">
+            <button class="btn" type="submit">Send Feedback</button>
+            <button type="reset" class="btn ghost">Reset</button>
+          </div>
+        </form>
+
+        <div style="border-radius:12px;padding:1rem;background:linear-gradient(180deg,#fff,#fbfbfb);box-shadow:var(--shadow-sm)">
+          <h3 style="margin-top:0">A calm place to share</h3>
+          <p style="color:var(--color-muted)">Your responses are read by our team and help shape the menu and dining experience. Thank you for taking a moment.</p>
+          <div style="margin-top:1rem">
+            <strong>Privacy</strong>
+            <p style="color:var(--color-muted);margin-top:0.25rem">We use information solely to improve dining experiences. No third-party sharing.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===== FOOTER ===== -->
+  <footer role="contentinfo">
+    <div class="container" style="display:flex;flex-direction:column;gap:1rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap">
+        <div>
+          <div style="font-weight:700">Fresh Food Restaurant</div>
+          <div style="color:var(--color-muted)">Wholesome. Seasonal. Fresh.</div>
+        </div>
+
+        <div style="display:flex;gap:1rem;align-items:center">
+          <form id="newsletter" style="display:flex;gap:0.5rem;align-items:center" onsubmit="return false;">
+            <label for="newsletterEmail" class="sr-only">Email</label>
+            <input id="newsletterEmail" type="email" placeholder="Your email" required style="padding:0.5rem;border-radius:10px;border:1px solid rgba(0,0,0,0.06)">
+            <button class="btn" id="newsletterBtn">Subscribe</button>
+          </form>
+
+          <div class="socials" aria-label="social links">
+            <a href="#" class="nav-link" aria-label="Instagram">IG</a>
+            <a href="#" class="nav-link" aria-label="Facebook">FB</a>
+            <a href="#" class="nav-link" aria-label="Twitter">TW</a>
+          </div>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid rgba(0,0,0,0.03);padding-top:0.6rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap">
+        <div style="color:var(--color-muted)">© <span id="year"></span> Fresh Food Restaurant. All rights reserved.</div>
+        <div style="color:var(--color-muted);font-size:0.9rem">Built with care · Accessible design</div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- =================== SCRIPT: DYNAMIC MENU, CART, UI BEHAVIORS =================== -->
+  <script>
+  (function () {
+    'use strict';
+
+    /* ====== Constants & Data ====== */
+    const TAX_RATE = 0.00; // placeholder
+    const STORAGE_KEY = 'ffr_cart_v1';
+
+    // MENU_DATA: Add/Edit items here. Each item: id, category, name, description, price (number), tags array, image (url)
+    const MENU_DATA = [
+      // Starters
+      { id: 's1', category: 'Starters', name: 'Fire-Roasted Beet Salad', desc: 'Baby beets, whipped chèvre, toasted seeds.', price: 220, tags: ['V','GF'], image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=60&auto=format&fit=crop' },
+      { id: 's2', category: 'Starters', name: 'Sourdough Bruschetta', desc: 'Tomato confit, basil, olive oil.', price: 180, tags: ['V'], image: 'https://images.unsplash.com/photo-1523986371872-9d3ba2e2f642?w=600&q=60&auto=format&fit=crop' },
+
+      // Mains
+      { id: 'm1', category: 'Mains', name: 'Grilled Salmon', desc: 'Citrus-herb butter, seasonal sides.', price: 520, tags: ['GF'], image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=600&q=60&auto=format&fit=crop' },
+      { id: 'm2', category: 'Mains', name: 'Smoky Mushroom Risotto', desc: 'Creamy arborio, parmesan, truffle oil.', price: 420, tags: ['V'], image: 'https://images.unsplash.com/photo-1543353071-087092ec3939?w=600&q=60&auto=format&fit=crop' },
+
+      // Salads
+      { id: 'sal1', category: 'Salads', name: 'Autumn Grain Bowl', desc: 'Farro, roasted squash, pepitas, herb dressing.', price: 340, tags: ['VG'], image: 'https://images.unsplash.com/photo-1473093226795-af9932fe5856?w=600&q=60&auto=format&fit=crop' },
+      { id: 'sal2', category: 'Salads', name: 'Citrus Prawn Salad', desc: 'Local prawns, fennel, citrus vinaigrette.', price: 460, tags: ['GF'], image: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&q=60&auto=format&fit=crop' },
+
+      // Desserts
+      { id: 'd1', category: 'Desserts', name: 'Almond Olive Oil Cake', desc: 'Honey drizzle and whipped cream.', price: 210, tags: ['V'], image: 'https://images.unsplash.com/photo-1541599540903-216a46ca1dc2?w=600&q=60&auto=format&fit=crop' },
+      { id: 'd2', category: 'Desserts', name: 'Dark Chocolate Mousse', desc: 'Sea salt, hazelnut crunch.', price: 240, tags: ['VG','GF'], image: 'https://images.unsplash.com/photo-1546549039-b7e2d5d8f8b0?w=600&q=60&auto=format&fit=crop' },
+
+      // Beverages
+      { id: 'b1', category: 'Beverages', name: 'Herbal Lemonade', desc: 'House-made with mint & lemon.', price: 120, tags: ['VG'], image: 'https://images.unsplash.com/photo-1505577058444-a3dabf98b2c4?w=600&q=60&auto=format&fit=crop' },
+      { id: 'b2', category: 'Beverages', name: 'Single Origin Coffee', desc: 'Daily brew from local roasters.', price: 110, tags: ['VG'], image: 'https://images.unsplash.com/photo-1509042239860-f550ce710b93?w=600&q=60&auto=format&fit=crop' },
+    ];
+
+    /* ====== State ====== */
+    let cart = loadCart();
+    let cartCountEl = document.getElementById('cartCount');
+    let cartDrawer = document.getElementById('cartDrawer');
+    let cartItemsEl = document.getElementById('cartItems');
+    let cartSubtotalEl = document.getElementById('cartSubtotal');
+    let toastEl = document.getElementById('toast');
+
+    /* ====== Utilities ====== */
+    function formatPrice(n) {
+      return '₹' + n.toFixed(2);
+    }
+
+    function saveCart() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cart));
+      } catch (e) {
+        console.warn('Could not persist cart', e);
+      }
+      renderCart();
+    }
+
+    function loadCart() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) return JSON.parse(raw);
+      } catch (e) {
+        console.warn('Cart load error', e);
+      }
+      return {};
+    }
+
+    function showToast(message, ms = 2200) {
+      toastEl.textContent = message;
+      toastEl.classList.add('show');
+      setTimeout(() => toastEl.classList.remove('show'), ms);
+    }
+
+    /* ====== RENDER MENU ====== */
+    const menuContainer = document.getElementById('menuContainer');
+    function renderMenu(filter = '') {
+      // group by category
+      const grouped = {};
+      MENU_DATA.forEach(item => {
+        if (filter) {
+          const needle = filter.toLowerCase();
+          if (!(
+            item.name.toLowerCase().includes(needle) ||
+            item.desc.toLowerCase().includes(needle) ||
+            item.tags.join(' ').toLowerCase().includes(needle) ||
+            item.category.toLowerCase().includes(needle)
+          )) return;
+        }
+        grouped[item.category] = grouped[item.category] || [];
+        grouped[item.category].push(item);
+      });
+
+      // build HTML
+      let html = '';
+      for (const category of Object.keys(grouped)) {
+        html += `<div class="menu-cat">
+                  <h3 style="margin:0 0 0.5rem 0">${escapeHtml(category)}</h3>
+                  <div class="menu-grid">`;
+        grouped[category].forEach(item => {
+          html += `
+            <div class="menu-item" data-id="${item.id}">
+              <div class="thumb" aria-hidden="true">
+                <img src="${item.image}" alt="${escapeHtml(item.name)}" width="140" height="140" loading="lazy" style="width:100%;height:100%;object-fit:cover;">
+              </div>
+              <div class="meta">
+                <div class="row">
+                  <div>
+                    <div style="font-weight:700">${escapeHtml(item.name)}</div>
+                    <div style="color:var(--color-muted);font-size:0.95rem">${escapeHtml(item.desc)}</div>
+                  </div>
+                  <div style="text-align:right">
+                    <div class="price">${formatPrice(item.price)}</div>
+                    <div style="color:var(--color-muted);font-size:0.9rem">${item.tags.map(t=>`<span class="tag">${escapeHtml(t)}</span>`).join(' ')}</div>
+                  </div>
+                </div>
+
+                <div style="display:flex;justify-content:flex-end;margin-top:0.5rem">
+                  <div class="add-cart">
+                    <div class="qty-controls" aria-hidden="true">
+                      <button class="qty-decrease" data-id="${item.id}" aria-label="Decrease quantity">−</button>
+                      <div class="qty-label" id="qty-${item.id}" aria-live="polite">${cart[item.id]?.quantity || 0}</div>
+                      <button class="qty-increase" data-id="${item.id}" aria-label="Increase quantity">+</button>
+                    </div>
+                    <button class="btn" data-add="${item.id}" aria-label="Add ${escapeHtml(item.name)} to cart">Add</button>
+                  </div>
+                </div>
+              </div>
+            </div>`;
+        });
+        html += `</div></div>`;
+      }
+
+      menuContainer.innerHTML = html;
+
+      // attach handlers
+      menuContainer.querySelectorAll('[data-add]').forEach(btn=>{
+        btn.addEventListener('click', (e)=>{
+          const id = e.currentTarget.getAttribute('data-add');
+          addToCart(id, 1);
+          const qtyLabel = document.getElementById('qty-'+id);
+          if (qtyLabel) qtyLabel.textContent = cart[id]?.quantity || 0;
+        });
+      });
+
+      menuContainer.querySelectorAll('.qty-increase').forEach(btn=>{
+        btn.addEventListener('click', (e)=>{
+          addToCart(e.currentTarget.dataset.id, 1);
+          const qtyLabel = document.getElementById('qty-'+e.currentTarget.dataset.id);
+          if (qtyLabel) qtyLabel.textContent = cart[e.currentTarget.dataset.id]?.quantity || 0;
+        });
+      });
+      menuContainer.querySelectorAll('.qty-decrease').forEach(btn=>{
+        btn.addEventListener('click', (e)=>{
+          addToCart(e.currentTarget.dataset.id, -1);
+          const qtyLabel = document.getElementById('qty-'+e.currentTarget.dataset.id);
+          if (qtyLabel) qtyLabel.textContent = cart[e.currentTarget.dataset.id]?.quantity || 0;
+        });
+      });
+    }
+
+    function addToCart(id, delta = 1) {
+      const item = MENU_DATA.find(i=>i.id===id);
+      if (!item) return;
+      cart[id] = cart[id] || { ...item, quantity: 0 };
+      cart[id].quantity = Math.max(0, cart[id].quantity + delta);
+      if (cart[id].quantity === 0) delete cart[id];
+      saveCart();
+      showToast(`Updated cart: ${item.name}`);
+    }
+
+    /* ====== RENDER CART ====== */
+    function renderCart() {
+      // update count
+      const count = Object.values(cart).reduce((s,i)=>s+i.quantity,0);
+      cartCountEl.textContent = count;
+      // update drawer UI
+      cartItemsEl.innerHTML = '';
+      if (count === 0) {
+        cartItemsEl.innerHTML = `<div class="cart-empty">Your cart is empty.</div>`;
+        cartSubtotalEl.textContent = formatPrice(0);
+        return;
+      }
+      const fragment = document.createDocumentFragment();
+      let subtotal = 0;
+      Object.values(cart).forEach(ci=>{
+        subtotal += ci.price * ci.quantity;
+        const itemEl = document.createElement('div');
+        itemEl.style.display = 'flex';
+        itemEl.style.justifyContent = 'space-between';
+        itemEl.style.alignItems = 'center';
+        itemEl.style.padding = '0.5rem';
+        itemEl.style.borderRadius = '8px';
+        itemEl.style.background = 'rgba(255,255,255,0.6)';
+        itemEl.dataset.id = ci.id;
+
+        itemEl.innerHTML = `
+          <div style="display:flex;gap:0.6rem;align-items:center">
+            <img src="${ci.image}" alt="${escapeHtml(ci.name)}" style="width:56px;height:56px;object-fit:cover;border-radius:8px">
+            <div style="min-width:0">
+              <div style="font-weight:700">${escapeHtml(ci.name)}</div>
+              <div style="color:var(--color-muted);font-size:0.9rem">${ci.quantity} × ${formatPrice(ci.price)}</div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:0.4rem">
+            <div style="font-weight:700">${formatPrice(ci.quantity * ci.price)}</div>
+            <div style="display:flex;gap:0.25rem">
+              <button class="nav-link cart-decrease" data-id="${ci.id}" aria-label="Decrease ${escapeHtml(ci.name)}">−</button>
+              <button class="nav-link cart-increase" data-id="${ci.id}" aria-label="Increase ${escapeHtml(ci.name)}">+</button>
+              <button class="nav-link cart-remove" data-id="${ci.id}" aria-label="Remove ${escapeHtml(ci.name)}">✕</button>
+            </div>
+          </div>
+        `;
+        fragment.appendChild(itemEl);
+      });
+
+      cartItemsEl.appendChild(fragment);
+
+      cartSubtotalEl.textContent = formatPrice(subtotal);
+
+      // attach item controls
+      cartItemsEl.querySelectorAll('.cart-increase').forEach(btn=>{
+        btn.addEventListener('click', ()=>{ addToCart(btn.dataset.id, 1); });
+      });
+      cartItemsEl.querySelectorAll('.cart-decrease').forEach(btn=>{
+        btn.addEventListener('click', ()=>{ addToCart(btn.dataset.id, -1); });
+      });
+      cartItemsEl.querySelectorAll('.cart-remove').forEach(btn=>{
+        btn.addEventListener('click', ()=>{ removeFromCart(btn.dataset.id); });
+      });
+    }
+
+    function removeFromCart(id) {
+      delete cart[id];
+      saveCart();
+      showToast('Removed item from cart');
+    }
+
+    /* ====== CART UI: open/close & focus trap ====== */
+    const openCartBtn = document.getElementById('openCartBtn');
+    const closeCartBtn = document.getElementById('closeCart');
+    const clearCartBtn = document.getElementById('clearCart');
+    const proceedCheckout = document.getElementById('proceedCheckout');
+    openCartBtn.addEventListener('click', ()=> openCart());
+    closeCartBtn.addEventListener('click', ()=> closeCart());
+    clearCartBtn.addEventListener('click', ()=> {
+      cart = {}; saveCart(); showToast('Cart cleared');
+    });
+    proceedCheckout.addEventListener('click', () => {
+      showToast('Mock checkout — feature not implemented');
+    });
+
+    function openCart() {
+      cartDrawer.setAttribute('aria-hidden', 'false');
+      openCartBtn.setAttribute('aria-expanded', 'true');
+      // basic focus trap
+      cartDrawer.style.transform = 'translateX(0)';
+      cartDrawer.focus();
+    }
+    function closeCart() {
+      cartDrawer.setAttribute('aria-hidden', 'true');
+      openCartBtn.setAttribute('aria-expanded', 'false');
+      cartDrawer.style.transform = '';
+    }
+
+    /* ====== SEARCH ====== */
+    document.getElementById('search').addEventListener('input', (e)=>{
+      renderMenu(e.target.value.trim());
+    });
+
+    /* ====== NAVIGATION SCROLL & ACTIVE LINK ====== */
+    document.querySelectorAll('button[data-target]').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        const target = document.querySelector(e.currentTarget.dataset.target);
+        if (target) {
+          // smooth scroll; respect reduced motion
+          if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            target.scrollIntoView();
+          } else {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        }
+      });
+    });
+
+    // active section tracking
+    const sections = document.querySelectorAll('main section[id]');
+    const navLinks = Array.from(document.querySelectorAll('nav.primary .nav-link'));
+    const observer = new IntersectionObserver((entries)=>{
+      entries.forEach(entry=>{
+        if (entry.isIntersecting) {
+          const id = '#' + entry.target.id;
+          navLinks.forEach(n=> n.setAttribute('aria-current', (n.dataset.target === id).toString()));
+        }
+      });
+    }, { root: null, threshold: 0.45 });
+    sections.forEach(s=>observer.observe(s));
+
+    /* ====== GALLERY LIGHTBOX ====== */
+    const galleryItems = document.querySelectorAll('.gallery-item');
+    const lightbox = document.getElementById('lightbox');
+    const lightboxImage = document.getElementById('lightboxImage');
+    const lightboxClose = document.getElementById('lightboxClose');
+
+    galleryItems.forEach(item=>{
+      item.addEventListener('click', ()=> openLightbox(item));
+      item.addEventListener('keydown', (e)=>{
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLightbox(item); }
+      });
+    });
+
+    function openLightbox(item) {
+      const src = item.dataset.src;
+      if (!src) return;
+      lightboxImage.src = src;
+      lightboxImage.alt = item.querySelector('img')?.alt || '';
+      lightbox.setAttribute('aria-hidden','false');
+      // trap focus
+      lightboxClose.focus();
+      document.addEventListener('keydown', onLightboxKey);
+    }
+    function closeLightbox() {
+      lightbox.setAttribute('aria-hidden','true');
+      lightboxImage.src = '';
+      document.removeEventListener('keydown', onLightboxKey);
+    }
+    function onLightboxKey(e) {
+      if (e.key === 'Escape') closeLightbox();
+    }
+    lightboxClose.addEventListener('click', closeLightbox);
+    lightbox.addEventListener('click', (e)=>{
+      if (e.target === lightbox) closeLightbox();
+    });
+
+    /* ====== TESTIMONIAL ROTATION ====== */
+    const TESTIMONIALS = [
+      { quote: "A seasonal delight — every dish felt carefully considered.", author: "Nisha K." },
+      { quote: "Cozy ambience and friendly staff. The grain bowl was outstanding.", author: "Arun P." },
+      { quote: "Fresh flavors and thoughtful portions. Loved the dessert.", author: "Meera T." },
+    ];
+    const testWrap = document.getElementById('testimonialInner');
+    let testIndex = 0;
+    function renderTestimonial() {
+      const t = TESTIMONIALS[testIndex];
+      testWrap.innerHTML = `<div class="testimonial" role="article">
+        <div style="flex:1">
+          <div class="quote">“${escapeHtml(t.quote)}”</div>
+          <div class="testimonial-meta" style="margin-top:0.5rem">— ${escapeHtml(t.author)}</div>
+        </div>
+      </div>`;
+    }
+    document.getElementById('prevTest').addEventListener('click', ()=>{
+      testIndex = (testIndex - 1 + TESTIMONIALS.length) % TESTIMONIALS.length;
+      renderTestimonial();
+    });
+    document.getElementById('nextTest').addEventListener('click', ()=>{
+      testIndex = (testIndex + 1) % TESTIMONIALS.length;
+      renderTestimonial();
+    });
+    // auto-rotate
+    let testTimer = setInterval(()=> {
+      testIndex = (testIndex + 1) % TESTIMONIALS.length;
+      renderTestimonial();
+    }, 6000);
+
+    /* ====== FEEDBACK FORM VALIDATION & MOCK SUBMIT ====== */
+    const feedbackForm = document.getElementById('feedbackForm');
+    feedbackForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      clearErrors();
+      const data = new FormData(feedbackForm);
+      const errors = validateFeedback(data);
+      if (Object.keys(errors).length > 0) {
+        showFeedbackErrors(errors);
+        return;
+      }
+      // simulate async
+      const submitBtn = feedbackForm.querySelector('button[type="submit"]');
+      const oldText = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending…';
+      await new Promise(r=>setTimeout(r, 900));
+      submitBtn.textContent = oldText;
+      submitBtn.disabled = false;
+      feedbackForm.reset();
+      showToast('Thank you — your feedback was sent.');
+    });
+
+    function validateFeedback(formData) {
+      const errors = {};
+      if (!formData.get('name') || formData.get('name').trim().length < 2) errors.name = 'Please enter your name (2+ characters).';
+      const email = formData.get('email') || '';
+      if (!/^\S+@\S+\.\S+$/.test(email)) errors.email = 'Enter a valid email address.';
+      if (!formData.get('visitDate')) errors.visitDate = 'Please pick a visit date.';
+      if (!formData.get('rating')) errors.rating = 'Please provide a rating.';
+      if ((formData.get('comments')||'').length > 1000) errors.comments = 'Comments are too long.';
+      return errors;
+    }
+    function showFeedbackErrors(errors) {
+      if (errors.name) document.getElementById('err-name').textContent = errors.name;
+      if (errors.email) document.getElementById('err-email').textContent = errors.email;
+      if (errors.visitDate) document.getElementById('err-visitDate').textContent = errors.visitDate;
+      if (errors.rating) document.getElementById('err-rating').textContent = errors.rating;
+      if (errors.comments) document.getElementById('err-comments').textContent = errors.comments;
+    }
+    function clearErrors() {
+      ['err-name','err-email','err-visitDate','err-rating','err-comments'].forEach(id => {
+        document.getElementById(id).textContent = '';
+      });
+    }
+
+    /* ====== NEWSLETTER SUBSCRIBE (simple validation + toast) ====== */
+    document.getElementById('newsletterBtn').addEventListener('click', ()=>{
+      const email = document.getElementById('newsletterEmail').value.trim();
+      if (!/^\S+@\S+\.\S+$/.test(email)) {
+        showToast('Please enter a valid email.');
+        return;
+      }
+      showToast('Subscribed — thank you!');
+      document.getElementById('newsletterEmail').value = '';
+    });
+
+    /* ====== HELPER: ESCAPE HTML (simple) ====== */
+    function escapeHtml(s='') {
+      return String(s).replace(/[&<>"']/g, function (m) {
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m];
+      });
+    }
+
+    /* ====== LIGHTWEIGHT ENTRANCE ANIMATIONS (IntersectionObserver) ====== */
+    const revealEls = document.querySelectorAll('[data-reveal]');
+    if (revealEls.length) {
+      const revealObserver = new IntersectionObserver((entries, obs)=>{
+        entries.forEach(entry=>{
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            obs.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.12 });
+      revealEls.forEach(el => {
+        revealObserver.observe(el);
+      });
+    }
+
+    /* ====== MOBILE NAV HANDLING & FOCUS TRAP ====== */
+    const mobileNavToggle = document.getElementById('mobileNavToggle');
+    const mobileNav = document.getElementById('mobileNav');
+    const closeMobileNav = document.getElementById('closeMobileNav');
+
+    mobileNavToggle.addEventListener('click', ()=>{
+      openMobileNav();
+    });
+    closeMobileNav.addEventListener('click', ()=> closeMobileNavFn());
+
+    function openMobileNav() {
+      mobileNav.style.display = 'block';
+      mobileNav.setAttribute('aria-hidden','false');
+      mobileNavToggle.setAttribute('aria-expanded','true');
+      // focus first link
+      const firstLink = mobileNav.querySelector('nav button');
+      if (firstLink) firstLink.focus();
+      // close when clicking outside
+      mobileNav.addEventListener('click', onMobileNavClick);
+    }
+    function closeMobileNavFn() {
+      mobileNav.style.display = 'none';
+      mobileNav.setAttribute('aria-hidden','true');
+      mobileNavToggle.setAttribute('aria-expanded','false');
+      mobileNav.removeEventListener('click', onMobileNavClick);
+      mobileNavToggle.focus();
+    }
+    function onMobileNavClick(e) {
+      if (e.target === mobileNav) closeMobileNavFn();
+    }
+
+    // close mobile nav when nav link clicked
+    mobileNav.querySelectorAll('nav button').forEach(btn=>{
+      btn.addEventListener('click', ()=> {
+        const target = document.querySelector(btn.dataset.target);
+        if (target) target.scrollIntoView({behavior: 'smooth', block: 'start'});
+        closeMobileNavFn();
+      });
+    });
+
+    /* ====== INIT ====== */
+    document.addEventListener('DOMContentLoaded', ()=>{
+      // render initial menu
+      renderMenu();
+      renderCart();
+      renderTestimonial();
+      // year in footer
+      document.getElementById('year').textContent = new Date().getFullYear();
+      // hook CTAs
+      document.getElementById('cta-view-menu').addEventListener('click', ()=> document.getElementById('menu').scrollIntoView({behavior:'smooth'}));
+      document.getElementById('view-menu-cta').addEventListener('click', ()=> document.getElementById('menu').scrollIntoView({behavior:'smooth'}));
+      document.getElementById('cta-order').addEventListener('click', ()=> openCart());
+
+      // connect gallery focus-trap: keyboard close via Esc already on lightbox
+      // ensure no console errors when opening cart via order-now
+      document.getElementById('order-now').addEventListener('click', ()=> openCart());
+      // basic accessibility: keyboard to close cart via Escape
+      document.addEventListener('keydown', (e)=>{
+        if (e.key === 'Escape') {
+          if (lightbox.getAttribute('aria-hidden') === 'false') closeLightbox();
+          else if (cartDrawer.getAttribute('aria-hidden') === 'false') closeCart();
+          else if (mobileNav.getAttribute('aria-hidden') === 'false') closeMobileNavFn();
+        }
+      });
+
+      // cart open via openCartBtn
+      document.getElementById('openCartBtn').addEventListener('click', openCart);
+      // update quantities display in menu (initial)
+      MENU_DATA.forEach(item => {
+        const qEl = document.getElementById('qty-'+item.id);
+        if (qEl) qEl.textContent = cart[item.id]?.quantity || 0;
+      });
+    });
+
+    // defensive: showToast if localStorage unsupported
+    try { localStorage.setItem('__ffr_test','1'); localStorage.removeItem('__ffr_test'); } catch (e) {
+      showToast('Local storage not available — cart persistence disabled.');
+    }
+
+    // avoid global leaks
+    window.FFR = {
+      addToCart, renderMenu, cart
+    };
+
+  })();
+  </script>
+</body>
+</html>
