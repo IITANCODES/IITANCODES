@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>I'm Sorry, My Love 💙🐼🌹</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Nunito:wght@400;600;700&family=Dancing+Script:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Floating Background Elements -->
+    <div class="floating-elements">
+        <div class="floating-heart">💖</div>
+        <div class="floating-panda">🐼</div>
+        <div class="floating-rose">🌹</div>
+        <div class="floating-heart">💙</div>
+        <div class="floating-star">✨</div>
+        <div class="floating-cloud">☁️</div>
+        <div class="floating-petal">🌸</div>
+        <div class="floating-rose">💙</div>
+    </div>
+
+    <!-- Header Section -->
+    <header class="hero-section">
+        <div class="container">
+            <div class="hero-content">
+                <div class="panda-waving" id="welcomePanda">🐼</div>
+                <h1 class="main-title">I'm So Sorry, My Love</h1>
+                <div class="rose-decoration">
+                    <span class="blue-rose">🌹</span>
+                    <span class="blue-rose">💙</span>
+                    <span class="blue-rose">🌹</span>
+                </div>
+                <p class="hero-subtitle">This baby of yours has something very important to say...</p>
+                <button class="scroll-btn" onclick="smoothScrollTo('apology-section')">
+                    Let's Talk 💬
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Apology Section -->
+    <section id="apology-section" class="apology-section">
+        <div class="container">
+            <div class="section-content">
+                <div class="panda-sad">😢🐼</div>
+                <div class="content-card">
+                    <h2>I'm Truly Sorry</h2>
+                    <div class="rose-border"></div>
+                    <p class="apology-text">I'm truly sorry for hurting you. You mean the world to me, and I never want to see you upset because of something I did. Just like this little panda, I'm feeling so sad without your smile.</p>
+                    <div class="interactive-panda" id="sadPanda">
+                        <div class="panda-character">🐼</div>
+                        <div class="panda-thought">💭 Missing your smile...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Acknowledgment Section -->
+    <section class="acknowledgment-section">
+        <div class="container">
+            <div class="section-content">
+                <div class="content-card">
+                    <h2>I Know I Messed Up</h2>
+                    <div class="panda-covering-eyes">🙈🐼</div>
+                    <p>I know I messed up, and I take full responsibility for my actions. Your feelings are valid, and I should have been more thoughtful. Even this panda knows when he's done something wrong.</p>
+                    <div class="rose-accent">
+                        <span class="clicking-rose" onclick="bloomRose(this)">🌹</span>
+                        <span class="clicking-rose" onclick="bloomRose(this)">🌹</span>
+                        <span class="clicking-rose" onclick="bloomRose(this)">🌹</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Interactive Love Counter -->
+    <section class="interactive-section">
+        <div class="container">
+            <div class="interactive-card">
+                <h2>Make This happy Happy Again</h2>
+                <div class="love-counter">
+                    <div class="panda-interactive" id="interactivePanda" onclick="increaseLove()">
+                        <div class="panda-face">🐼</div>
+                        <div class="panda-expression" id="pandaExpression">😢</div>
+                    </div>
+                    <p class="counter-text">Clicks: <span id="loveCount">0</span></p>
+                    <p class="panda-message" id="pandaMessage">Click the panda to cheer him up! 🐾</p>
+                </div>
+                <div class="rose-garden">
+                    <h3>Blue Rose Garden</h3>
+                    <div class="garden-container">
+                        <div class="rose-plant" onclick="growRose(this)">🌱</div>
+                        <div class="rose-plant" onclick="growRose(this)">🌱</div>
+                        <div class="rose-plant" onclick="growRose(this)">🌱</div>
+                        <div class="rose-plant" onclick="growRose(this)">🌱</div>
+                        <div class="rose-plant" onclick="growRose(this)">🌱</div>
+                    </div>
+                    <p class="garden-message">Click the sprouts to grow blue roses! 🌹💙</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Reasons Section -->
+    <section class="reasons-section">
+        <div class="container">
+            <h2>Why You Mean Everything To Me</h2>
+            <div class="reasons-grid">
+                <div class="reason-card" data-index="0">
+                    <div class="panda-happy">😊🐼</div>
+                    <p>Your beautiful smile lights up my entire day, brighter than these blue roses</p>
+                    <div class="rose-decoration">💙🌹</div>
+                </div>
+                <div class="reason-card" data-index="1">
+                    <div class="panda-laughing">😄🐼</div>
+                    <p>The way you laugh at my silly jokes makes everything better, like sunshine after rain</p>
+                    <div class="rose-decoration">🌹✨</div>
+                </div>
+                <div class="reason-card" data-index="2">
+                    <div class="panda-heart">🥰🐼</div>
+                    <p>Your kind heart and caring nature inspire me to be better, just like how roses inspire beauty</p>
+                    <div class="rose-decoration">💙🌹💖</div>
+                </div>
+                <div class="reason-card" data-index="3">
+                    <div class="panda-hugging">🤗🐼</div>
+                    <p>The little things you do show how much you care, as gentle as baby hugs</p>
+                    <div class="rose-decoration">🌸💙</div>
+                </div>
+                <div class="reason-card" data-index="4">
+                    <div class="panda-amazed">😍🐼</div>
+                    <p>Your strength and intelligence amaze me every day, more magnificent than any garden</p>
+                    <div class="rose-decoration">🌹🌺🌹</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Promises Section -->
+    <section class="promises-section">
+        <div class="container">
+            <div class="promise-content">
+                <h2>My Promises to You</h2>
+                <div class="large-panda-scene">
+                    <div class="panda-giving-roses">🐼💐</div>
+                    <div class="floating-roses">
+                        <span>🌹</span>
+                        <span>💙</span>
+                        <span>🌹</span>
+                        <span>💙</span>
+                        <span>🌹</span>
+                    </div>
+                </div>
+                <div class="promises-list">
+                    <div class="promise-item">
+                        <div class="panda-listening">👂🐼</div>
+                        <p>i promise i wont say bad english</p>
+                    </div>
+                    <div class="promise-item">
+                        <div class="panda-gentle">🌸🐼</div>
+                        <p>I'll be more thoughtful in my words and actions, as gentle as rose petals</p>
+                    </div>
+                    <div class="promise-item">
+                        <div class="panda-talking">💬🐼</div>
+                        <p>I'll communicate better instead of making assumptions, clear as morning dew</p>
+                    </div>
+                    <div class="promise-item">
+                        <div class="panda-love">💕🐼</div>
+                        <p>I'll show you every day how much you mean to me, like a panda's endless love</p>
+                    </div>
+                    <div class="promise-item">
+                        <div class="panda-growing">🌱🐼</div>
+                        <p>I'll work on being the partner you deserve, as beautiful as blue roses in bloom</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Surprise Messages -->
+    <section class="surprise-section">
+        <div class="container">
+            <div class="surprise-card">
+                <button class="surprise-btn" onclick="showSurpriseMessage()">
+                    Click for a Special Message! 🎁
+                </button>
+                <div class="surprise-message hidden" id="surpriseMessage">
+                    <div class="panda-surprise">🥰🐼</div>
+                    <p id="surpriseText"></p>
+                    <div class="sparkle-animation">✨💫✨</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer-section">
+        <div class="container">
+            <div class="footer-content">
+                <div class="rose-border-footer">
+                    🌹💙🌹💙🌹💙🌹💙🌹💙🌹💙🌹
+                </div>
+                <h3>Forever Yours</h3>
+                <p>This baby loves you more than all the blue roses in the world 🐼💙🌹</p>
+                <div class="final-panda-scene">
+                    <div class="panda-sleeping">😴🐼</div>
+                    <div class="dreaming-roses">💭🌹💙🌹</div>
+                </div>
+                <div class="rose-border-footer">
+                    🌹💙🌹💙🌹💙🌹💙🌹💙🌹💙🌹
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>
